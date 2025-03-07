@@ -1,0 +1,25 @@
+{
+  "name": "vue-to-mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "huyong",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@vue/compiler-dom": "^3.5.13",
+    "glob": "^11.0.1",
+    "jscodeshift": "^17.1.2",
+    "postcss": "^8.5.3",
+    "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/jscodeshift": "^0.12.0",
+    "@types/node": "^22.13.9"
+  }
+}

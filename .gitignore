@@ -1,0 +1,25 @@
+# Node.js 依赖
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# 构建产物
+dist/
+build/
+*.log
+
+# 编辑器/IDE 配置文件
+.vscode/
+.idea/
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 临时文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
