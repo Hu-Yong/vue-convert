@@ -3,9 +3,13 @@ import { ComponentMap } from '../types'
 
 // 创建一个脚本转换器，用于将 Element Plus 组件转换为 Vant 组件
 export const createScriptConverter = (componentMap: ComponentMap): Transform => {
-  return (file: { source: any }, api: { jscodeshift: any }) => {
-    const j = api.jscodeshift
-    const root = j(file.source)
+  return (source: any , api: { jscodeshift: any }) => {
+    if (!api?.jscodeshift) {
+        throw new Error('jscodeshift 实例未正确初始化')
+      }
+    const j = api.jscodeshift.withParser('ts') // 明确指定解析器为 TypeScript
+    console.log(source);
+    const root = j(source);
 
     // 转换组件导入
     root.find(j.ImportDeclaration)
