@@ -53,7 +53,7 @@ export class TemplateConverter {
   /** 处理子组件合并逻辑 */
   private processChildren(node: ElementNode, config: ComponentMap[string]) {
     config.children?.forEach(childRule => {
-      const childIndex = node.children.findIndex(child => 
+      const childIndex = node.children.findIndex(child =>
         child.type === NodeTypes.ELEMENT &&
         child.tag === childRule.selector
       );
@@ -88,115 +88,31 @@ export class TemplateConverter {
     //@ts-ignore
     rule: ComponentConfig['children'][0]
   ) {
-    // 合并常规属性
+    // 合并属性和指令
     child.props.forEach(prop => {
-      if (prop.type === NodeTypes.ATTRIBUTE) {
-        this.mergeStandardAttribute(parent, prop, rule);
-      } else if (prop.type === NodeTypes.DIRECTIVE) {
-        this.mergeDirective(parent, prop, rule);
+      // 同时处理 ATTRIBUTE（属性） 和 DIRECTIVE（指令）类型的属性
+      if ([NodeTypes.ATTRIBUTE, NodeTypes.DIRECTIVE].includes(prop.type)) {
+        // 根据规则映射属性/指令名称，如将 model 映射为 bind:value
+        const mappedName = rule.props?.[prop.name] || prop.name;
+        console.log(`Merging ${prop.type} ${prop.name} to ${mappedName}`);
+        parent.props.push({
+          ...prop, // 保留原属性（包括修饰符、参数等）
+          name: mappedName
+        });
       }
     });
-  
+
     // 合并内容
     if (child.children.length > 0) {
       parent.children.push(...child.children);
     }
   }
-  
-  // 处理标准属性合并
-  private mergeStandardAttribute(
-    parent: ElementNode,
-    prop: AttributeNode,
-    //@ts-ignore
-    rule: ComponentConfig['children'][0]
-  ) {
-    const mappedName = rule.props?.[prop.name] || prop.name;
-    console.log(`Merging attribute ${prop.name} → ${mappedName}`);
-    
-    parent.props.push({
-      type: NodeTypes.ATTRIBUTE,
-      name: mappedName,
-      //@ts-ignore
-      value: prop.value ? {
-        type: NodeTypes.TEXT,
-        content: typeof mappedName === 'function' 
-          ? mappedName(prop.value.content)
-          : prop.value.content
-      } : undefined
-    });
-  }
-  
-  // 处理指令合并（重点处理 v-model）
-  private mergeDirective(
-    parent: ElementNode,
-    prop: DirectiveNode,
-    //@ts-ignore
-    rule: ComponentConfig['children'][0]
-  ) {
-    // 处理 v-model 指令
-    if (prop.name === 'model') {
-      const vModelValue = prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.exp.content : '';
-      
-      // 创建新的 v-model 指令
-      const vModelDirective: DirectiveNode = {
-        type: NodeTypes.DIRECTIVE,
-        name: 'model',
-        arg: undefined,
-        //@ts-ignore
-        exp: {
-          type: NodeTypes.SIMPLE_EXPRESSION,
-          content: vModelValue || '',
-          isStatic: false,
-          //@ts-ignore
-          loc: prop.exp?.loc || createEmptyLoc()
-        },
-        modifiers: [],
-        loc: prop.loc
-      };
-  
-      console.log(`Merging v-model: ${vModelValue}`);
-      parent.props.push(vModelDirective);
-    }
-    // 处理其他指令...
-    else if (prop.name === 'bind') {
-      // 特殊处理属性绑定（如 :disabled）
-      this.mergeBindDirective(parent, prop, rule);
-    }
-  }
-  
-  // 处理属性绑定指令
-  private mergeBindDirective(
-    parent: ElementNode,
-    prop: DirectiveNode,
-    //@ts-ignore
-    rule: ComponentConfig['children'][0]
-  ) {
-    const arg = prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.arg.content : '';
-    const exp = prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.exp.content : '';
-  
-    if (arg) {
-      const mappedName = rule.props?.[arg] || arg;
-      parent.props.push({
-        type: NodeTypes.DIRECTIVE,
-        name: 'bind',
-        //@ts-ignore
-        arg: {
-          type: NodeTypes.SIMPLE_EXPRESSION,
-          content: mappedName,
-          isStatic: true,
-          loc: prop.arg!.loc
-        },
-        exp: prop.exp,
-        modifiers: [],
-        loc: prop.loc
-      });
-    }
-  }
+
 
   /** 生成兄弟组件 */
   // private generateSiblings(node: ElementNode, config: ComponentMap[string]) {
   //   const parent = this.findParentElement(node);
-    
+
   //   config.siblings?.forEach(siblingConfig => {
   //     const newSibling = this.createSiblingElement(node, siblingConfig);
   //     parent?.children.push(newSibling);
@@ -219,7 +135,7 @@ export class TemplateConverter {
   //         content: value
   //       }
   //     })),
-  //     children: typeof config.children === 'function' 
+  //     children: typeof config.children === 'function'
   //       ? config.children(original.children)
   //       : []
   //   };
@@ -266,9 +182,9 @@ export class TemplateConverter {
           dir.arg.content = newEvent;
         }
       }
-    } 
+    }
   }
-  
+
 
   // **生成新的 Vue 模板**
   private generate(): string {
@@ -317,17 +233,17 @@ export class TemplateConverter {
       const directive = attr as DirectiveNode; // 这里明确转换类型
       const expContent = directive.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? directive.exp.content : '';
       const argContent = directive.arg?.type === NodeTypes.SIMPLE_EXPRESSION ? directive.arg.content : '';
-      
+
       switch (directive.name) {
         case 'on':  // **事件指令 @click="handler"**
           return ` @${argContent}="${expContent}"`;
-  
+
         case 'bind':  // **绑定指令 :prop="value"**
           return ` :${argContent}="${expContent}"`;
-  
+
         case 'for':  // **列表渲染 v-for**
           return ` v-for="${expContent}"`;
-  
+
         default:  // 其他指令，如 `v-if`
           return ` v-${directive.name}${argContent ? `:${argContent}` : ''}="${expContent}"`;
       }
