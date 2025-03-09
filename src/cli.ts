@@ -26,17 +26,17 @@ async function processFile(filePath: string) {
     const newTemplate = templateConverter.convert();
 
     // 转换脚本
-    // const scriptConverter = createScriptConverter(config.componentMap)
-    // const newScript = scriptConverter(script as any, {
-    //     jscodeshift: jscodeshift.withParser('ts'),
-    //     j: jscodeshift.withParser('ts'),
-    //     stats: (message: string) => console.log(message),
-    //     report: (message: string) => console.log(message)
-    // }, {})
+    const scriptConverter = createScriptConverter(config.componentMap)
+    const newScript = scriptConverter(script as any, {
+        jscodeshift: jscodeshift.withParser('ts'),
+        j: jscodeshift.withParser('ts'),
+        stats: (message: string) => console.log(message),
+        report: (message: string) => console.log(message)
+    }, {})
 
     // 转换样式
-    // const styleConverter = new StyleConverter(config)
-    // const newStyle = await styleConverter.convert(style)
+    const styleConverter = new StyleConverter(config)
+    const newStyle = await styleConverter.convert(style)
 
     // 生成新文件内容
     const newContent = `

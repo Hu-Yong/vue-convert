@@ -29,17 +29,201 @@ export class TemplateConverter {
     });
   }
 
-  // 转换组件标签（Element Plus -> Vant）
   private convertElement(node: ElementNode) {
     const originalTag = node.tag;
-    const componentConfig = this.config.componentMap[originalTag];
+    const componentMap = this.config.componentMap[originalTag];
 
-    if (componentConfig) {
-      node.tag = typeof componentConfig === 'string' ? componentConfig : componentConfig.name;
-      //console.log(`Converting <${originalTag}> to <${node.tag}>`);
-      this.convertAttributes(node, componentConfig);
+    if (componentMap) {
+      // 步骤1：处理组件自身转换
+      node.tag = componentMap.name;
+      this.convertAttributes(node, componentMap);
+
+      // 步骤2：处理子组件合并
+      if (componentMap.children) {
+        this.processChildren(node, componentMap);
+      }
+
+      // 步骤3：生成兄弟组件
+      // if (componentMap.siblings) {
+      //   this.generateSiblings(node, componentMap);
+      // }
     }
   }
+
+  /** 处理子组件合并逻辑 */
+  private processChildren(node: ElementNode, config: ComponentMap[string]) {
+    config.children?.forEach(childRule => {
+      const childIndex = node.children.findIndex(child => 
+        child.type === NodeTypes.ELEMENT &&
+        child.tag === childRule.selector
+      );
+
+      if (childIndex !== -1) {
+        const childNode = node.children[childIndex] as ElementNode;
+
+        // 合并处理策略
+        switch (childRule.handler) {
+          case 'merge':
+            this.mergeChildAttributes(node, childNode, childRule);
+            node.children.splice(childIndex, 1); // 移除原子组件
+            break;
+
+          case 'wrap':
+            // todo 
+            //this.wrapChildComponent(childNode, childRule);
+            break;
+
+          case 'transform':
+            // todo 
+            //this.transformChildComponent(childNode, childRule);
+            break;
+        }
+      }
+    });
+  }
+
+  private mergeChildAttributes(
+    parent: ElementNode,
+    child: ElementNode,
+    //@ts-ignore
+    rule: ComponentConfig['children'][0]
+  ) {
+    // 合并常规属性
+    child.props.forEach(prop => {
+      if (prop.type === NodeTypes.ATTRIBUTE) {
+        this.mergeStandardAttribute(parent, prop, rule);
+      } else if (prop.type === NodeTypes.DIRECTIVE) {
+        this.mergeDirective(parent, prop, rule);
+      }
+    });
+  
+    // 合并内容
+    if (child.children.length > 0) {
+      parent.children.push(...child.children);
+    }
+  }
+  
+  // 处理标准属性合并
+  private mergeStandardAttribute(
+    parent: ElementNode,
+    prop: AttributeNode,
+    //@ts-ignore
+    rule: ComponentConfig['children'][0]
+  ) {
+    const mappedName = rule.props?.[prop.name] || prop.name;
+    console.log(`Merging attribute ${prop.name} → ${mappedName}`);
+    
+    parent.props.push({
+      type: NodeTypes.ATTRIBUTE,
+      name: mappedName,
+      //@ts-ignore
+      value: prop.value ? {
+        type: NodeTypes.TEXT,
+        content: typeof mappedName === 'function' 
+          ? mappedName(prop.value.content)
+          : prop.value.content
+      } : undefined
+    });
+  }
+  
+  // 处理指令合并（重点处理 v-model）
+  private mergeDirective(
+    parent: ElementNode,
+    prop: DirectiveNode,
+    //@ts-ignore
+    rule: ComponentConfig['children'][0]
+  ) {
+    // 处理 v-model 指令
+    if (prop.name === 'model') {
+      const vModelValue = prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.exp.content : '';
+      
+      // 创建新的 v-model 指令
+      const vModelDirective: DirectiveNode = {
+        type: NodeTypes.DIRECTIVE,
+        name: 'model',
+        arg: undefined,
+        //@ts-ignore
+        exp: {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content: vModelValue || '',
+          isStatic: false,
+          //@ts-ignore
+          loc: prop.exp?.loc || createEmptyLoc()
+        },
+        modifiers: [],
+        loc: prop.loc
+      };
+  
+      console.log(`Merging v-model: ${vModelValue}`);
+      parent.props.push(vModelDirective);
+    }
+    // 处理其他指令...
+    else if (prop.name === 'bind') {
+      // 特殊处理属性绑定（如 :disabled）
+      this.mergeBindDirective(parent, prop, rule);
+    }
+  }
+  
+  // 处理属性绑定指令
+  private mergeBindDirective(
+    parent: ElementNode,
+    prop: DirectiveNode,
+    //@ts-ignore
+    rule: ComponentConfig['children'][0]
+  ) {
+    const arg = prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.arg.content : '';
+    const exp = prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? prop.exp.content : '';
+  
+    if (arg) {
+      const mappedName = rule.props?.[arg] || arg;
+      parent.props.push({
+        type: NodeTypes.DIRECTIVE,
+        name: 'bind',
+        //@ts-ignore
+        arg: {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content: mappedName,
+          isStatic: true,
+          loc: prop.arg!.loc
+        },
+        exp: prop.exp,
+        modifiers: [],
+        loc: prop.loc
+      });
+    }
+  }
+
+  /** 生成兄弟组件 */
+  // private generateSiblings(node: ElementNode, config: ComponentMap[string]) {
+  //   const parent = this.findParentElement(node);
+    
+  //   config.siblings?.forEach(siblingConfig => {
+  //     const newSibling = this.createSiblingElement(node, siblingConfig);
+  //     parent?.children.push(newSibling);
+  //   });
+  // }
+
+  /** 创建兄弟节点 */
+  // private createSiblingElement(
+  //   original: ElementNode,
+  //   config: ComponentMap['siblings'][0]
+  // ): ElementNode {
+  //   return {
+  //     type: NodeTypes.ELEMENT,
+  //     tag: config.component,
+  //     props: Object.entries(config.props).map(([name, value]) => ({
+  //       type: NodeTypes.ATTRIBUTE,
+  //       name,
+  //       value: {
+  //         type: NodeTypes.TEXT,
+  //         content: value
+  //       }
+  //     })),
+  //     children: typeof config.children === 'function' 
+  //       ? config.children(original.children)
+  //       : []
+  //   };
+  // }
 
   // 处理属性转换（Element Plus -> Vant）
   private convertAttributes(node: ElementNode, config: ComponentMap[string]) {
@@ -82,20 +266,9 @@ export class TemplateConverter {
           dir.arg.content = newEvent;
         }
       }
-    } else if (dir.name === 'model') {
-      // 处理 `v-model` 语法
-      if (dir.exp?.type === NodeTypes.SIMPLE_EXPRESSION) {
-        //console.log(`Processing v-model for ${dir.exp.content}`);
-      } else {
-        //console.log('Processing v-model');
-      }
-    } else if (dir.name === 'bind') {
-      // 处理 `v-bind` 语法
-      if (dir.arg?.type === NodeTypes.SIMPLE_EXPRESSION) {
-        //console.log(`Processing v-bind:${dir.arg.content}`);
-      }
-    }
+    } 
   }
+  
 
   // **生成新的 Vue 模板**
   private generate(): string {
@@ -135,7 +308,6 @@ export class TemplateConverter {
 
   // **转换属性节点**
   private rebuildAttribute(attr: AttributeNode | DirectiveNode): string {
-    console.log(attr);
     if ('name' in attr && attr.type === NodeTypes.ATTRIBUTE) {
       if ('value' in attr && attr.value) {
         return ` ${attr.name}="${attr.value.content}"`;

@@ -1,10 +1,10 @@
 <template>
   <div class="el-container"><van-button type="primary" round icon="el-icon-search" @click="showMessage"> Search
-    </van-button><el-form :model="form" label-width="80px"><el-form-item label="Username"><van-field
-          v-model="form.username" placeholder="Enter username" clearable></van-field></el-form-item><el-form-item
-        label="City"><el-select v-model="form.city"><el-option v-for="item in cities" :key="item.value"
-            :label="item.label" :value="item.value"></el-option></el-select></el-form-item></el-form><el-dialog
-      v-model="dialogVisible" title="Tips">
+    </van-button><van-form :model="form" label-width="80px"><van-field label="Username" v-model="form.username"
+        placeholder="Enter username" clearable></van-field><van-field label="City"><van-field
+          v-model="form.city"><el-option v-for="item in cities" :key="item.value" :label="item.label"
+            :value="item.value"></el-option></van-field></van-field></van-form><el-dialog v-model="dialogVisible"
+      title="Tips">
       <p>{{ dialogContent }}</p>
     </el-dialog></div>
 </template>
