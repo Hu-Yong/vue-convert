@@ -44,9 +44,9 @@ export class TemplateConverter {
       }
 
       // 步骤3：生成兄弟组件
-      // if (componentMap.siblings) {
-      //   this.generateSiblings(node, componentMap);
-      // }
+      if (componentMap.siblings) {
+        this.generateSiblings(node, componentMap);
+      }
     }
   }
 
@@ -74,8 +74,7 @@ export class TemplateConverter {
             break;
 
           case 'transform':
-            // todo 
-            //this.transformChildComponent(childNode, childRule);
+            this.transformChildComponent(childNode, childRule);
             break;
         }
       }
@@ -86,7 +85,7 @@ export class TemplateConverter {
     parent: ElementNode,
     child: ElementNode,
     //@ts-ignore
-    rule: ComponentConfig['children'][0]
+    rule: ComponentMap['children'][0]
   ) {
     // 合并属性和指令
     child.props.forEach(prop => {
@@ -110,36 +109,39 @@ export class TemplateConverter {
 
 
   /** 生成兄弟组件 */
-  // private generateSiblings(node: ElementNode, config: ComponentMap[string]) {
-  //   const parent = this.findParentElement(node);
+  private generateSiblings(node: ElementNode, config: ComponentMap[string]) {
+    //const parent = this.findParentElement(node);
 
-  //   config.siblings?.forEach(siblingConfig => {
-  //     const newSibling = this.createSiblingElement(node, siblingConfig);
-  //     parent?.children.push(newSibling);
-  //   });
-  // }
+    config.siblings?.forEach(siblingConfig => {
+      const newSibling = this.createSiblingElement(node, siblingConfig);
+      //@ts-ignore
+      parent?.children.push(newSibling);
+    });
+  }
 
   /** 创建兄弟节点 */
-  // private createSiblingElement(
-  //   original: ElementNode,
-  //   config: ComponentMap['siblings'][0]
-  // ): ElementNode {
-  //   return {
-  //     type: NodeTypes.ELEMENT,
-  //     tag: config.component,
-  //     props: Object.entries(config.props).map(([name, value]) => ({
-  //       type: NodeTypes.ATTRIBUTE,
-  //       name,
-  //       value: {
-  //         type: NodeTypes.TEXT,
-  //         content: value
-  //       }
-  //     })),
-  //     children: typeof config.children === 'function'
-  //       ? config.children(original.children)
-  //       : []
-  //   };
-  // }
+  private createSiblingElement(
+    original: ElementNode,
+    //@ts-ignore
+    config: ComponentMap['siblings'][0]
+  ): ElementNode {
+    return {
+      type: NodeTypes.ELEMENT,
+      tag: config.component,
+      //@ts-ignore
+      props: Object.entries(config.props).map(([name, value]) => ({
+        type: NodeTypes.ATTRIBUTE,
+        name,
+        value: {
+          type: NodeTypes.TEXT,
+          content: value
+        }
+      })),
+      children: typeof config.children === 'function'
+        ? config.children(original.children)
+        : []
+    };
+  }
 
   // 处理属性转换（Element Plus -> Vant）
   private convertAttributes(node: ElementNode, config: ComponentMap[string]) {
@@ -250,4 +252,118 @@ export class TemplateConverter {
     }
     return '';
   }
+
+  /**
+ * 包裹子组件（如 el-radio → van-radio）
+ */
+// private wrapChildComponent(
+//   childNode: ElementNode,
+//   //@ts-ignore
+//   rule: ComponentMap['children'][0]
+// ): void {
+//   // 创建包裹组件
+//   const wrapperNode: ElementNode = {
+//     type: NodeTypes.ELEMENT,
+//     tag: rule.handler === 'wrap' 
+//       ? this.getWrappedComponentName(childNode.tag) 
+//       : childNode.tag,
+//     props: [],
+//     children: [],
+//     codegenNode: undefined,
+//     ns: 0,
+//     tagType: 0,
+//     isSelfClosing: false
+//   };
+
+//   // 转换属性
+//   childNode.props.forEach(prop => {
+//     if (prop.type === NodeTypes.ATTRIBUTE) {
+//       const mappedName = rule.props?.[prop.name] || prop.name;
+//       const value = typeof mappedName === 'function' 
+//         ? mappedName(prop.value?.content || '') 
+//         : prop.value?.content;
+
+//       wrapperNode.props.push({
+//         type: NodeTypes.ATTRIBUTE,
+//         name: mappedName,
+//         value: value ? { 
+//           type: NodeTypes.TEXT, 
+//           content: value 
+//         } : undefined
+//       });
+//     }
+//   });
+
+//   // 保留原始子内容
+//   wrapperNode.children.push(...childNode.children);
+
+//   // 替换原子组件
+//   const parent = this.findParent(childNode);
+//   if (parent) {
+//     const index = parent.children.indexOf(childNode);
+//     parent.children.splice(index, 1, wrapperNode);
+//   }
+// }
+
+/**
+ * 转换子组件为其他形式（如 el-option → picker 数据）
+ */
+private transformChildComponent(
+  childNode: ElementNode,
+  //@ts-ignore
+  rule: ComponentMap['children'][0]
+): void {
+  // 收集转换数据
+  const transformedData: Record<string, any> = {};
+
+  // 处理属性转换
+  childNode.props.forEach(prop => {
+    if (prop.type === NodeTypes.ATTRIBUTE) {
+      const key = rule.props?.[prop.name] || prop.name;
+      transformedData[key] = prop.value?.content;
+    }
+  });
+
+  // 处理子内容（如 el-option 的文本内容）
+  if (childNode.children.length > 0) {
+    transformedData.text = this.extractTextContent(childNode.children);
+  }
+
+  // 存储转换后的数据
+  // const parent = this.findParent(childNode);
+  // if (parent) {
+  //   if (!parent.__transformedChildren) {
+  //     parent.__transformedChildren = [];
+  //   }
+  //   parent.__transformedChildren.push(transformedData);
+  // }
+
+  // 移除原子组件
+  //@ts-ignore
+  const index = parent?.children.indexOf(childNode) ?? -1;
+  if (index !== -1) {
+    //@ts-ignore
+    parent?.children.splice(index, 1);
+  }
+}
+
+// 辅助方法
+private getWrappedComponentName(originalTag: string): string {
+  return this.config.componentMap[originalTag]?.name || originalTag;
+}
+
+// private findParent(node: ElementNode): ElementNode | null {
+//   // 实现父节点查找逻辑（需要维护节点父子关系）
+//   return node.parent || null;
+// }
+
+private extractTextContent(nodes: any[]): string {
+  return nodes
+    .map(node => {
+      if (node.type === NodeTypes.TEXT) return node.content;
+      if (node.type === NodeTypes.INTERPOLATION) return `\${${node.content.content}}`;
+      return '';
+    })
+    .join(' ');
+}
 }

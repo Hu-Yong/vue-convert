@@ -16,6 +16,17 @@
       </van-popup>
     </van-form>
 
+    <van-field label="City">
+          <van-field v-model="form.city">
+            <el-option
+              v-for="item in cities"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </van-field>
+        </van-field>
+
     <!-- 转换后的反馈组件 -->
     <van-dialog v-model="dialogVisible" title="Tips">
       <p>{{ dialogContent }}</p>
