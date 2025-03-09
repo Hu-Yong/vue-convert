@@ -36,7 +36,7 @@ export class TemplateConverter {
 
     if (componentConfig) {
       node.tag = typeof componentConfig === 'string' ? componentConfig : componentConfig.name;
-      console.log(`Converting <${originalTag}> to <${node.tag}>`);
+      //console.log(`Converting <${originalTag}> to <${node.tag}>`);
       this.convertAttributes(node, componentConfig);
     }
   }
@@ -60,10 +60,10 @@ export class TemplateConverter {
     if (typeof newName === 'function') {
       if ('value' in attr && attr.value) {
         attr.value.content = newName(attr.value.content);
-        console.log(`Converting attribute ${attr.name} to ${attr.value.content}`);
+        //console.log(`Converting attribute ${attr.name} to ${attr.value.content}`);
       }
     } else if (newName) {
-      console.log(`Renaming attribute ${attr.name} to ${newName}`);
+      //console.log(`Renaming attribute ${attr.name} to ${newName}`);
       attr.name = newName;
     }
   }
@@ -78,21 +78,21 @@ export class TemplateConverter {
 
       if (newEvent) {
         if (dir.arg?.type === NodeTypes.SIMPLE_EXPRESSION) {
-          console.log(`Converting event ${originalEvent} to ${newEvent}`);
+          //console.log(`Converting event ${originalEvent} to ${newEvent}`);
           dir.arg.content = newEvent;
         }
       }
     } else if (dir.name === 'model') {
       // 处理 `v-model` 语法
       if (dir.exp?.type === NodeTypes.SIMPLE_EXPRESSION) {
-        console.log(`Processing v-model for ${dir.exp.content}`);
+        //console.log(`Processing v-model for ${dir.exp.content}`);
       } else {
-        console.log('Processing v-model');
+        //console.log('Processing v-model');
       }
     } else if (dir.name === 'bind') {
       // 处理 `v-bind` 语法
       if (dir.arg?.type === NodeTypes.SIMPLE_EXPRESSION) {
-        console.log(`Processing v-bind:${dir.arg.content}`);
+        //console.log(`Processing v-bind:${dir.arg.content}`);
       }
     }
   }
@@ -135,36 +135,31 @@ export class TemplateConverter {
 
   // **转换属性节点**
   private rebuildAttribute(attr: AttributeNode | DirectiveNode): string {
-    if ('name' in attr) {
+    console.log(attr);
+    if ('name' in attr && attr.type === NodeTypes.ATTRIBUTE) {
       if ('value' in attr && attr.value) {
         return ` ${attr.name}="${attr.value.content}"`;
       }
       return ` ${attr.name}`;
     } else if ((attr as DirectiveNode).type === NodeTypes.DIRECTIVE) {
       const directive = attr as DirectiveNode; // 这里明确转换类型
-      if (directive.arg) {
-        const expContent = directive.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? directive.exp.content : '';
-        const argContent = directive.arg.type === NodeTypes.SIMPLE_EXPRESSION ? directive.arg.content : '';
-        return ` :${argContent}="${expContent}"`;
+      const expContent = directive.exp?.type === NodeTypes.SIMPLE_EXPRESSION ? directive.exp.content : '';
+      const argContent = directive.arg?.type === NodeTypes.SIMPLE_EXPRESSION ? directive.arg.content : '';
+      
+      switch (directive.name) {
+        case 'on':  // **事件指令 @click="handler"**
+          return ` @${argContent}="${expContent}"`;
+  
+        case 'bind':  // **绑定指令 :prop="value"**
+          return ` :${argContent}="${expContent}"`;
+  
+        case 'for':  // **列表渲染 v-for**
+          return ` v-for="${expContent}"`;
+  
+        default:  // 其他指令，如 `v-if`
+          return ` v-${directive.name}${argContent ? `:${argContent}` : ''}="${expContent}"`;
       }
     }
     return '';
-  }
-
-
-
-  // **生成属性字符串**
-  private genProps(props: any[]): string {
-    return props.map(prop => {
-      if (prop.type === NodeTypes.ATTRIBUTE) {
-        return ` ${prop.name}="${prop.value?.content}"`;
-      } else if (prop.type === NodeTypes.DIRECTIVE) {
-        // 处理 `v-bind`、`v-model`、`v-if` 等指令
-        const arg = prop.arg ? `:${prop.arg.content}` : '';
-        const exp = prop.exp ? `="${prop.exp.content}"` : '';
-        return ` v-${prop.name}${arg}${exp}`;
-      }
-      return '';
-    }).join('');
   }
 }
