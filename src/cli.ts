@@ -23,8 +23,8 @@ async function processFile(filePath: string) {
     const content = fs.readFileSync(filePath, 'utf-8');
     const [template, script, style] = extractSections(content);
 
-    const  customAst = new parseTemplate(template).customAst();
-    console.log(JSON.stringify((customAst[0]), null, 2));
+    const  customAst = new parseTemplate(template).customAst()[0];
+    console.log(JSON.stringify((customAst), null, 2));
 
     // 转换模板
     // const templateConverter = new TemplateConverter(template, config)
@@ -64,7 +64,7 @@ ${style}
 
 // 提取模板、脚本和样式部分
 function extractSections(content: string): [string, string, string] {
-    const templateMatch = content.match(/<template>([\s\S]*?)<\/template>/)
+    const templateMatch = content.match(/<template>([\s\S]*)<\/template>/)
     const scriptMatch = content.match(/<script[^>]*>([\s\S]*?)<\/script>/)
     const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/)
 
