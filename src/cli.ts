@@ -5,6 +5,8 @@ import jscodeshift from 'jscodeshift'
 import { createScriptConverter } from './core/script-converter'
 import { StyleConverter } from './core/style-converter'
 import { componentMap, attributeMap } from './config/component-map'
+import { parse } from 'path'
+import { parseTemplate } from './utils/parse-template'
 
 // 配置转换规则
 const config = {
@@ -21,9 +23,12 @@ async function processFile(filePath: string) {
     const content = fs.readFileSync(filePath, 'utf-8');
     const [template, script, style] = extractSections(content);
 
+    const  customAst = new parseTemplate(template).customAst();
+    console.log(JSON.stringify((customAst[0]), null, 2));
+
     // 转换模板
-    const templateConverter = new TemplateConverter(template, config)
-    const newTemplate = templateConverter.convert();
+    // const templateConverter = new TemplateConverter(template, config)
+    // const newTemplate = templateConverter.convert();
 
     // 转换脚本
     // const scriptConverter = createScriptConverter(config.componentMap)
@@ -41,7 +46,7 @@ async function processFile(filePath: string) {
     // 生成新文件内容
     const newContent = `
 <template>
-${newTemplate}
+${template}
 </template>
 
 <script setup lang="ts">
